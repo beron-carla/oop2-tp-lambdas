@@ -2,7 +2,7 @@ package ejercicios.lambdas.permission2;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class Productos {
     public static final String SIN_PERMISOS = "No tiene los permisos necesarios";
@@ -14,25 +14,24 @@ public class Productos {
         this.productos = productos;
     }
 
-    public void addProducto(String userId, Producto producto) {
-        checkId(userId, (id) -> this.security.checkAddPermission(userId));
-        this.productos.add(producto);
-    }
-
-    private void checkId(String userId, Predicate<String> verificarID) {
-        if (!verificarID.test(userId)) {
+    public <T> T ejecutarSitienePermiso(Supplier<Boolean> permissionCheck, Supplier<T> supplier) {
+        if (!permissionCheck.get()) {
             throw new RuntimeException(SIN_PERMISOS);
         }
+        return supplier.get();
+    }
+
+    public void addProducto(String userId, Producto producto) {
+        ejecutarSitienePermiso(() -> this.security.checkAddPermission(userId), () -> this.productos.add(producto));
     }
 
     public void removeProducto(String userId, Producto producto) {
-        checkId(userId, (id) -> this.security.checkRemovePermission(userId));
-        this.productos.remove(producto);
+        ejecutarSitienePermiso(() -> this.security.checkRemovePermission(userId), () -> this.productos.remove(producto));
     }
 
     public List<Producto> listAll(String userId) {
-        checkId(userId, (id) -> this.security.checkListPermission(userId));
-        return Collections.unmodifiableList(this.productos);
+        return ejecutarSitienePermiso(() -> this.security.checkListPermission(userId), () -> Collections.unmodifiableList(this.productos));
+
     }
 
     int cantidad() {
